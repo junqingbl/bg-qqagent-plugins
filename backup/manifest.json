@@ -1,0 +1,28 @@
+{
+  "id": "backup",
+  "name": "备份",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "description": "把云端的数据定时打包成 zip，留在服务器上；面板里一键下载到电脑，或者用配套脚本自动拉。",
+  "author": "制作洛",
+  "category": "工具",
+  "summary": "打包与下载",
+  "entry": "index.js",
+  "priority": 900,
+  "defaultEnabled": true,
+  "hooks": [],
+  "tools": false,
+  "ui": "ui.js",
+  "uiTab": { "id": "backup-cfg", "label": "备份" },
+  "config": {
+    "enabled": true,
+    "dir": "backups",
+    "sources": ["data", "diary", "plugins"],
+    "keep": 7,
+    "autoDaily": true,
+    "autoHour": 4,
+    "format": "zip"
+  },
+  "permissions": [],
+  "scopes": ["all"]
+}
