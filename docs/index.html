@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>云端备份插件 · backup</title>
+<meta name="description" content="给 QQ 机器人插件内核用的备份插件：每天把数据打包成 zip，面板一键下载。">
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --line:#1e2836; --text:#e6edf3;
+    --muted:#8b9bb0; --accent:#3ddc97; --accent-dim:#1f6f4f; --code:#0d1420;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.7; font-size:16px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:36px 20px 80px}
+  header{padding:8px 0 28px;border-bottom:1px solid var(--line)}
+  .badge{
+    display:inline-block; font-size:12px; letter-spacing:.08em; color:var(--accent);
+    border:1px solid var(--accent-dim); border-radius:999px; padding:3px 12px; margin-bottom:16px;
+  }
+  h1{font-size:30px;line-height:1.25;margin:0 0 10px;letter-spacing:-.01em}
+  .lead{color:var(--muted);font-size:16px;margin:0}
+  h2{font-size:18px;margin:38px 0 12px;display:flex;align-items:center;gap:8px}
+  h2::before{content:"";width:3px;height:16px;background:var(--accent);border-radius:2px}
+  p{margin:10px 0}
+  ul{margin:10px 0;padding-left:22px}
+  li{margin:7px 0}
+  li::marker{color:var(--accent-dim)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13.5px;
+    background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto;margin:14px 0}
+  pre code{background:none;border:none;padding:0;font-size:13px;line-height:1.65}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px;margin:16px 0}
+  @media(min-width:620px){.grid{grid-template-columns:1fr 1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card .t{font-size:14px;font-weight:600;margin-bottom:6px}
+  .card .d{font-size:13.5px;color:var(--muted);margin:0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500;font-size:13px}
+  td code{font-size:12.5px}
+  .btn{
+    display:inline-block;margin:8px 10px 8px 0;padding:11px 20px;border-radius:9px;
+    background:var(--accent);color:#06231a;text-decoration:none;font-weight:600;font-size:15px;
+  }
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .warn{background:#1a1410;border:1px solid #3a2a1a;border-radius:10px;padding:14px 16px;margin:16px 0;font-size:14px}
+  .warn b{color:#f0b46c}
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  footer a{color:var(--muted)}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="badge">BG-QQagent · 插件</span>
+  <h1>云端备份插件</h1>
+  <p class="lead">每天定时把机器人的数据打包一次，掉链子的时候能找回来。装完面板里多一个「备份」页签，点一下就能下载到电脑。</p>
+</header>
+
+<h2>能干什么</h2>
+<div class="grid">
+  <div class="card"><div class="t">定时打包</div><p class="d">默认每天 4 点，把 <code>data</code>、<code>diary</code>、<code>plugins</code> 打成一个 zip。</p></div>
+  <div class="card"><div class="t">自动清旧</div><p class="d">只留最近 7 份，超出的自动删，不占硬盘。</p></div>
+  <div class="card"><div class="t">一键取回</div><p class="d">面板里点下载，或者用脚本拉 <code>latest.zip</code>。</p></div>
+</div>
+
+<h2>安装</h2>
+<p>把 <code>backup/</code> 整个目录放进程序的插件目录，然后重启：</p>
+<pre><code>cp -r backup /path/to/qq-agent/plugins/
+systemctl restart qq-agent-bg</code></pre>
+<p>面板顶栏会多出「备份」页签。</p>
+
+<div class="warn">
+  <b>踩坑提醒</b>：<code>manifest.json</code> 里只写 <code>"ui": "ui.js"</code> 是不够的，还必须写 <code>uiTab</code>。内核只从「已注册页签」里找界面文件，少这一行，点「配置」就会提示没有独立面板。
+</div>
+
+<h2>拿到电脑上</h2>
+<p>插件跑在服务器上，碰不到你电脑的硬盘，所以它只负责打包，取走要靠这一边。服务器上永远有一个 <code>latest.zip</code> 指向最新那份：</p>
+<pre><code>scp root@你的服务器:/opt/qq-agent-bg/backups/latest.zip ./</code></pre>
+<p>Windows 上配个计划任务每天拉一次，就不用惦记了。</p>
+
+<h2>配置</h2>
+<table>
+  <tr><th>键</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>dir</code></td><td><code>backups</code></td><td>备份放哪，相对程序根目录</td></tr>
+  <tr><td><code>sources</code></td><td><code>["data","diary","plugins"]</code></td><td>备份哪些目录，不存在的跳过</td></tr>
+  <tr><td><code>keep</code></td><td><code>7</code></td><td>留几份，1~60</td></tr>
+  <tr><td><code>autoDaily</code></td><td><code>true</code></td><td>每天自动备份</td></tr>
+  <tr><td><code>autoHour</code></td><td><code>4</code></td><td>几点打（0~23）</td></tr>
+  <tr><td><code>format</code></td><td><code>zip</code></td><td>zip 或 tar.gz，没有 zip 命令自动退到 tar.gz</td></tr>
+</table>
+
+<h2>下载</h2>
+<p>
+  <a class="btn" href="https://github.com/junqingbl/bg-qqagent-plugins/archive/refs/heads/main.zip">下载插件（zip）</a>
+  <a class="btn ghost" href="https://github.com/junqingbl/bg-qqagent-plugins">去 GitHub 看源码</a>
+</p>
+
+<div class="warn">
+  <b>两个提醒</b><br>
+  ① 备份包里含 <code>data/config.json</code>，里面有模型 API key，<b>别把备份发给别人</b>。<br>
+  ② 备份不含 <code>node_modules</code>，恢复后要重新 <code>npm install</code>。恢复是手动动作——解压，把三个目录放回程序目录，重启。插件故意不做「一键恢复」，那个点错了代价太大。
+</div>
+
+<footer>
+  MIT License · 给 <a href="https://github.com/BG-QQagent">BG-QQagent</a> 插件内核用（apiVersion: 1）<br>
+  <a href="https://github.com/junqingbl/bg-qqagent-plugins">github.com/junqingbl/bg-qqagent-plugins</a>
+</footer>
+
+</div>
+</body>
+</html>
